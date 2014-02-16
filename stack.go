@@ -1,22 +1,6 @@
 package chickenVM
 
-// Value stack stores a stack of values. its zero value is an empty stack.
-// type ValueStack []Value
-
-// func (v *ValueStack) Push(val Value) {
-// 	*v = append(*v, val)
-// }
-
-// func (v *ValueStack) Pop() Value {
-// 	var rVal Value
-// 	rVal, *v = (*v)[len(*v)-1], (*v)[:len(*v)-1]
-// 	return rVal
-// }
-
-// func (v *ValueStack) IsEmpty() bool {
-// 	return len(*v) == 0
-// }
-
+// Program stack
 type ValueStack struct {
 	data []Value
 	head int

@@ -42,6 +42,7 @@ func (v *VM) Cycle() []Value {
 func (v *VM) Execute(op int64) []Value {
 	var iarg int64
 	var a, b Value
+
 	switch op >> OPCODE_SHAMT {
 	case OP_PUSH:
 		iarg = op & ITYPE_ARGMASK

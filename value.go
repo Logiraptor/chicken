@@ -66,6 +66,10 @@ func (c *NilValue) Bool() bool {
 	return false
 }
 
+func (n *NilValue) Float64() float64 {
+	panic("Cannot convert nil to float")
+}
+
 func (n *NilValue) Compare(Value) int {
 	panic("cannot compare nil value")
 }
