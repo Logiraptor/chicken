@@ -1,4 +1,4 @@
 chicken
-=======
+=========
 
-A virtual machine written in pure Go.
+A set of tools for writing programming languages in go. Current work is on a PEG parser which will be eventually used to generate itself.
