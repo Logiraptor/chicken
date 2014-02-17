@@ -32,7 +32,6 @@ func TestSimpleAdd(t *testing.T) {
 				t.Error(err)
 				return
 			}
-			print(len(vm.code))
 			result := vm.Run()
 			So(result[0], ShouldEqual, Number(18))
 		})
