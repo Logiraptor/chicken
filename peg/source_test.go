@@ -42,7 +42,7 @@ func TestSourceConsume(t *testing.T) {
 			t.Error(err)
 		}
 		r := regexp.MustCompile(ct.Regex)
-		match := s.Consume(r)
+		match := s.Consume(r, 0)
 		if match == nil || ct.Expected != string(match) {
 			t.Errorf("Source failed to consume input: %s re: %s match: %s exp: %s", ct.Body, ct.Regex, match, ct.Expected)
 		}

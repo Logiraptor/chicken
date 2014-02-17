@@ -9,7 +9,6 @@ import (
 
 type Source struct {
 	buf []byte
-	pos int
 }
 
 func NewSource(in io.Reader) (*Source, error) {
@@ -25,15 +24,14 @@ func NewSource(in io.Reader) (*Source, error) {
 // Consume tries to consume text matching the specified regex
 // starting at the current position. Returns the consumed text,
 // or nil if there was no match.
-func (s *Source) Consume(regex *regexp.Regexp) []byte {
-	loc := regex.FindIndex(s.buf[s.pos:])
+func (s *Source) Consume(regex *regexp.Regexp, pos int) []byte {
+	loc := regex.FindIndex(s.buf[pos:])
 	if loc == nil {
 		return nil
 	}
 
-	if loc[0] == s.pos {
-		s.pos = loc[1]
-		return s.buf[loc[0]:loc[1]]
+	if loc[0] == 0 {
+		return s.buf[pos+loc[0] : pos+loc[1]]
 	}
 
 	return nil
@@ -41,9 +39,9 @@ func (s *Source) Consume(regex *regexp.Regexp) []byte {
 
 // Consume literal attempts to consume a literal string.
 // Returns the consumed text, or nil if there was no match.
-func (s *Source) ConsumeLiteral(valid []byte) []byte {
-	if bytes.HasPrefix(s.buf[s.pos:], valid) {
-		s.pos += len(valid)
+func (s *Source) ConsumeLiteral(valid []byte, pos int) []byte {
+	if bytes.HasPrefix(s.buf[pos:], valid) {
+		pos += len(valid)
 		return valid
 	}
 	return nil

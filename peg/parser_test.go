@@ -18,12 +18,47 @@ var parseTestTable = []ParseTest{
 	ParseTest{
 		"prgm <- 'a'",
 		"a",
+		&ParseTree{"prgm", []byte("a"), nil},
+	},
+	ParseTest{
+		"prgm <- ~'\\d+'",
+		"74538",
+		&ParseTree{"prgm", []byte("74538"), nil},
+	},
+	ParseTest{
+		"prgm <- 'a' ' ' 'b'",
+		"a b",
 		&ParseTree{
 			"prgm",
-			[]byte("a"),
 			nil,
+			[]*ParseTree{
+				&ParseTree{"prgm", []byte("a"), nil},
+				&ParseTree{"prgm", []byte(" "), nil},
+				&ParseTree{"prgm", []byte("b"), nil},
+			},
 		},
 	},
+	ParseTest{
+		"prgm <- name '=' number \n name <- ~'[a-zA-Z]+' \n number <- ~'\\d+'",
+		"variableName=432",
+		&ParseTree{
+			"prgm",
+			nil,
+			[]*ParseTree{
+				&ParseTree{"name", []byte("variableName"), nil},
+				&ParseTree{"prgm", []byte("="), nil},
+				&ParseTree{"number", []byte("432"), nil},
+			},
+		},
+	},
+}
+
+func TestTemp(t *testing.T) {
+	// l := lex(strings.NewReader("prgm <- name '=' number \n name <- ~'[a-zA-Z]+' \n number <- ~'\\d+'"))
+	// for item := range l.items {
+	// 	fmt.Println(item)
+	// }
+	// t.Errorf("dummy")
 }
 
 func TestParseTable(t *testing.T) {
@@ -41,6 +76,10 @@ func TestParseTable(t *testing.T) {
 		}
 
 		if err := treeCompare(tree, tc.exp); err != nil {
+			fmt.Println("Got:")
+			dumpTree(tree, "")
+			fmt.Println("Expected:")
+			dumpTree(tc.exp, "")
 			t.Error(err)
 			return
 		}
@@ -49,10 +88,10 @@ func TestParseTable(t *testing.T) {
 
 func treeCompare(a, b *ParseTree) error {
 	if a.Type != b.Type {
-		return errors.New(fmt.Sprintf("tree type mismatch: %s exp: %s", a.Type, b.Type))
+		return errors.New(fmt.Sprintf("tree type mismatch: %q exp: %q", a.Type, b.Type))
 	}
 	if !bytes.Equal(a.Data, b.Data) {
-		return errors.New(fmt.Sprintf("tree data mismatch: %s exp: %s", string(a.Data), string(b.Data)))
+		return errors.New(fmt.Sprintf("tree data mismatch: %q exp: %q", string(a.Data), string(b.Data)))
 	}
 
 	if len(a.Children) != len(b.Children) {
@@ -66,4 +105,12 @@ func treeCompare(a, b *ParseTree) error {
 	}
 
 	return nil
+}
+
+func dumpTree(tree *ParseTree, indent string) {
+	fmt.Println(indent, tree.Type)
+	fmt.Printf("%s  %q\n", indent, string(tree.Data))
+	for _, child := range tree.Children {
+		dumpTree(child, indent+" ")
+	}
 }

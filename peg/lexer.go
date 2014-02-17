@@ -29,11 +29,13 @@ func (i item) String() string {
 type itemType int
 
 const (
-	itemError itemType = iota
+	itemUNKNOWN itemType = iota
+	itemError   itemType = iota
 	itemAssignment
 	itemQuote
 	itemLiteral
 	itemWhitespace
+	itemNewline
 	itemIdentifier
 	itemRegexp
 	itemEOF
@@ -51,6 +53,8 @@ func (i itemType) String() string {
 		return "itemLiteral"
 	case itemWhitespace:
 		return "itemWhitespace"
+	case itemNewline:
+		return "itemNewline"
 	case itemIdentifier:
 		return "itemIdentifier"
 	case itemRegexp:
@@ -110,7 +114,7 @@ func (l *lexer) peek() rune {
 	if err == io.EOF {
 		return eof
 	} else if err != nil {
-		l.errorf("%s", err.Error())
+		l.errorf("peek: %s", err.Error())
 		return 0
 	}
 
@@ -118,7 +122,7 @@ func (l *lexer) peek() rune {
 	if err == io.EOF {
 		return eof
 	} else if err != nil {
-		l.errorf("%s", err.Error())
+		l.errorf("peek: %s", err.Error())
 		return 0
 	}
 	r, _ := utf8.DecodeRune(p)
@@ -175,7 +179,7 @@ func (l *lexer) hasPrefix(prefix string) bool {
 	if err == io.EOF {
 		return false
 	} else if err != nil {
-		l.errorf("%s", err.Error())
+		l.errorf("hasPrefix: %s", err.Error())
 		return false
 	}
 	return string(p) == prefix
@@ -192,8 +196,10 @@ func lexPeg(l *lexer) stateFn {
 	switch r := l.peek(); {
 	case unicode.IsLetter(r):
 		return lexIdentifier
-	case unicode.IsSpace(r):
+	case unicode.IsSpace(r) && r != '\n':
 		return lexWhitespace
+	case r == '\n':
+		return lexNewline
 	case r == '<':
 		return lexAssignment
 	case r == '\'':
@@ -217,10 +223,21 @@ func lexIdentifier(l *lexer) stateFn {
 }
 
 func lexWhitespace(l *lexer) stateFn {
-	for unicode.IsSpace(l.peek()) {
-		l.next()
+	for {
+		r := l.peek()
+		if unicode.IsSpace(r) && r != '\n' {
+			l.next()
+		} else {
+			break
+		}
 	}
 	l.emit(itemWhitespace)
+	return lexPeg
+}
+
+func lexNewline(l *lexer) stateFn {
+	l.next()
+	l.emit(itemNewline)
 	return lexPeg
 }
 
@@ -244,7 +261,6 @@ func lexLiteral(l *lexer) stateFn {
 			l.next()
 		} else if r == '\'' {
 			l.emitInner(itemLiteral, 1, 1)
-			// l.emit(itemLiteral)
 			return lexPeg
 		} else if r == eof {
 			l.errorf("eof while parsing literal")
@@ -269,10 +285,9 @@ func lexRegex(l *lexer) stateFn {
 			l.next()
 		} else if r == '\'' {
 			l.emitInner(itemRegexp, 2, 1)
-			// l.emit(itemLiteral)
 			return lexPeg
 		} else if r == eof {
-			l.errorf("eof while parsing literal")
+			l.errorf("eof while parsing regexp")
 			return nil
 		}
 	}
