@@ -96,6 +96,23 @@ var parseTestTable = []ParseTest{
 			},
 		},
 	},
+	ParseTest{
+		"prgm <- item+\nitem <- a/ b\na <- 'a'\n b <- 'b'",
+		"abaabba",
+		&ParseTree{
+			"item+",
+			nil,
+			[]*ParseTree{
+				&ParseTree{"a", []byte("a"), nil},
+				&ParseTree{"b", []byte("b"), nil},
+				&ParseTree{"a", []byte("a"), nil},
+				&ParseTree{"a", []byte("a"), nil},
+				&ParseTree{"b", []byte("b"), nil},
+				&ParseTree{"b", []byte("b"), nil},
+				&ParseTree{"a", []byte("a"), nil},
+			},
+		},
+	},
 }
 
 func TestTemp(t *testing.T) {

@@ -149,7 +149,7 @@ func parseRuleBody(name string, parts []*Lexeme) parseStateFn {
 			}
 			lex := parts[len(parts)-1]
 			parts := parts[:len(parts)-1]
-			return parseRuleBody(name, append(parts, PlusClosure(lex)))
+			return parseRuleBody(name, append(parts, NewPlusClosure(lex)))
 		case itemClosure:
 			if len(parts) == 0 {
 				p.Errorf("expected lexeme definition before '*'")
@@ -157,7 +157,7 @@ func parseRuleBody(name string, parts []*Lexeme) parseStateFn {
 			}
 			lex := parts[len(parts)-1]
 			parts := parts[:len(parts)-1]
-			return parseRuleBody(name, append(parts, StarClosure(lex)))
+			return parseRuleBody(name, append(parts, NewStarClosure(lex)))
 		case itemOptional:
 			if len(parts) == 0 {
 				p.Errorf("expected lexeme definition before '?'")
@@ -165,7 +165,9 @@ func parseRuleBody(name string, parts []*Lexeme) parseStateFn {
 			}
 			lex := parts[len(parts)-1]
 			parts := parts[:len(parts)-1]
-			return parseRuleBody(name, append(parts, OptionClosure(lex)))
+			return parseRuleBody(name, append(parts, NewOptionClosure(lex)))
+		case itemAlternate:
+			return parseAlternateRHS(name, parts)
 		case itemNewline, itemEOF:
 			if len(parts) == 0 {
 				return nil
@@ -180,5 +182,34 @@ func parseRuleBody(name string, parts []*Lexeme) parseStateFn {
 			return nil
 		}
 		return nil
+	}
+}
+
+func parseAlternateRHS(name string, parts []*Lexeme) parseStateFn {
+	return func(p *parser) parseStateFn {
+		next, ok := <-p.lex.items
+		if !ok {
+			p.Errorf("expected lexeme after '/'")
+			return nil
+		}
+		var rhs *Lexeme
+		switch next.typ {
+		case itemWhitespace:
+			return parseAlternateRHS(name, parts)
+		case itemLiteral:
+			rhs = NewLiteralLexer(name, next.val)
+		case itemRegexp:
+			rhs = NewRegexpLexer(name, regexp.MustCompile(next.val))
+		case itemIdentifier:
+			rhs = NewRuleLexer(next.val)
+		default:
+			p.Errorf("unexpected token : %v", next)
+			return nil
+		}
+
+		lhs := parts[len(parts)-1]
+		parts := parts[:len(parts)-1]
+
+		return parseRuleBody(name, append(parts, NewAlternateLexer(name, lhs, rhs)))
 	}
 }

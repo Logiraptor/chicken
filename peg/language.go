@@ -127,7 +127,7 @@ func NewConcatLexer(name string, deps []*Lexeme) *Lexeme {
 	}
 }
 
-func PlusClosure(lex *Lexeme) *Lexeme {
+func NewPlusClosure(lex *Lexeme) *Lexeme {
 	return &Lexeme{
 		Name:         lex.Name + "+",
 		Dependencies: []*Lexeme{lex},
@@ -155,7 +155,7 @@ func PlusClosure(lex *Lexeme) *Lexeme {
 	}
 }
 
-func StarClosure(lex *Lexeme) *Lexeme {
+func NewStarClosure(lex *Lexeme) *Lexeme {
 	return &Lexeme{
 		Name:         lex.Name + "*",
 		Dependencies: []*Lexeme{lex},
@@ -183,13 +183,32 @@ func StarClosure(lex *Lexeme) *Lexeme {
 	}
 }
 
-func OptionClosure(lex *Lexeme) *Lexeme {
+func NewOptionClosure(lex *Lexeme) *Lexeme {
 	return &Lexeme{
 		Name:         lex.Name + "?",
 		Dependencies: []*Lexeme{lex},
 		Lexer: func(s *Source, pos int) (*ParseTree, error, int) {
 			tree, _, offset := lex.Lexer(s, pos)
 			return tree, nil, offset
+		},
+	}
+}
+
+func NewAlternateLexer(name string, lhs, rhs *Lexeme) *Lexeme {
+	return &Lexeme{
+		Name:         name,
+		Dependencies: []*Lexeme{lhs, rhs},
+		Lexer: func(s *Source, pos int) (*ParseTree, error, int) {
+			tree, err, off := lhs.Lexer(s, pos)
+			if err == nil {
+				return tree, nil, off
+			} else {
+				tree, err, off = rhs.Lexer(s, pos)
+				if err != nil {
+					return nil, err, 0
+				}
+				return tree, nil, off
+			}
 		},
 	}
 }
