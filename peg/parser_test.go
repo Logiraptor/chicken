@@ -115,14 +115,6 @@ var parseTestTable = []ParseTest{
 	},
 }
 
-func TestTemp(t *testing.T) {
-	// l := lex(strings.NewReader("prgm <- name '=' number \n name <- ~'[a-zA-Z]+' \n number <- ~'\\d+'"))
-	// for item := range l.items {
-	// 	fmt.Println(item)
-	// }
-	// t.Errorf("dummy")
-}
-
 func TestParseTable(t *testing.T) {
 	for _, tc := range parseTestTable {
 		parser, err := NewParser(strings.NewReader(tc.language))
