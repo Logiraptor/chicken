@@ -23,6 +23,36 @@ var lexTestTable = []LexTest{
 		},
 	},
 	LexTest{
+		"prgm <- _ a b",
+		[]item{
+			item{typ: itemIdentifier, val: "prgm"},
+			item{typ: itemWhitespace, val: " "},
+			item{typ: itemAssignment, val: "<-"},
+			item{typ: itemWhitespace, val: " "},
+			item{typ: itemIdentifier, val: "_"},
+			item{typ: itemWhitespace, val: " "},
+			item{typ: itemIdentifier, val: "a"},
+			item{typ: itemWhitespace, val: " "},
+			item{typ: itemIdentifier, val: "b"},
+			item{typ: itemEOF, val: ""},
+		},
+	},
+	LexTest{
+		"prgm <- b*+/?",
+		[]item{
+			item{typ: itemIdentifier, val: "prgm"},
+			item{typ: itemWhitespace, val: " "},
+			item{typ: itemAssignment, val: "<-"},
+			item{typ: itemWhitespace, val: " "},
+			item{typ: itemIdentifier, val: "b"},
+			item{typ: itemClosure, val: "*"},
+			item{typ: itemPlus, val: "+"},
+			item{typ: itemAlternate, val: "/"},
+			item{typ: itemOptional, val: "?"},
+			item{typ: itemEOF, val: ""},
+		},
+	},
+	LexTest{
 		"prgm <- ~'-?\\d+.?\\d*'",
 		[]item{
 			item{typ: itemIdentifier, val: "prgm"},

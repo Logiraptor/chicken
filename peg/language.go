@@ -113,11 +113,83 @@ func NewConcatLexer(name string, deps []*Lexeme) *Lexeme {
 				if err != nil {
 					return nil, err, 0
 				} else {
-					children = append(children, tree)
+					if tree != nil {
+						children = append(children, tree)
+					}
 					offset += l
 				}
 			}
+			if len(children) == 1 {
+				return children[0], nil, offset
+			}
 			return &ParseTree{Type: name, Data: nil, Children: children}, nil, offset
+		},
+	}
+}
+
+func PlusClosure(lex *Lexeme) *Lexeme {
+	return &Lexeme{
+		Name:         lex.Name + "+",
+		Dependencies: []*Lexeme{lex},
+		Lexer: func(s *Source, pos int) (*ParseTree, error, int) {
+			start := pos
+			resp := &ParseTree{Type: lex.Name + "+"}
+			next, err, off := lex.Lexer(s, pos)
+			if err != nil {
+				return nil, err, 0
+			} else {
+				resp.Children = append(resp.Children, next)
+				pos += off
+				for {
+					next, err, off = lex.Lexer(s, pos)
+					if err != nil {
+						break
+					}
+					resp.Children = append(resp.Children, next)
+					pos += off
+				}
+			}
+
+			return resp, nil, start - pos
+		},
+	}
+}
+
+func StarClosure(lex *Lexeme) *Lexeme {
+	return &Lexeme{
+		Name:         lex.Name + "*",
+		Dependencies: []*Lexeme{lex},
+		Lexer: func(s *Source, pos int) (*ParseTree, error, int) {
+			start := pos
+			resp := &ParseTree{Type: lex.Name + "*"}
+			var next *ParseTree
+			var err error
+			var off int
+			if err != nil {
+				return nil, err, 0
+			} else {
+				for {
+					next, err, off = lex.Lexer(s, pos)
+					if err != nil {
+						break
+					}
+					resp.Children = append(resp.Children, next)
+					pos += off
+				}
+			}
+
+			return resp, nil, start - pos
+		},
+	}
+}
+
+func OptionClosure(lex *Lexeme) *Lexeme {
+	return &Lexeme{
+		Name:         lex.Name + "?",
+		Dependencies: []*Lexeme{lex},
+		Lexer: func(s *Source, pos int) (*ParseTree, error, int) {
+			tree, _, offset := lex.Lexer(s, pos)
+			return tree, nil, offset
 		},
 	}
 }

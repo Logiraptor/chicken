@@ -142,6 +142,30 @@ func parseRuleBody(name string, parts []*Lexeme) parseStateFn {
 			return parseRuleBody(name, append(parts, NewRegexpLexer(name, regexp.MustCompile(next.val))))
 		case itemIdentifier:
 			return parseRuleBody(name, append(parts, NewRuleLexer(next.val)))
+		case itemPlus:
+			if len(parts) == 0 {
+				p.Errorf("expected lexeme definition before '+'")
+				return nil
+			}
+			lex := parts[len(parts)-1]
+			parts := parts[:len(parts)-1]
+			return parseRuleBody(name, append(parts, PlusClosure(lex)))
+		case itemClosure:
+			if len(parts) == 0 {
+				p.Errorf("expected lexeme definition before '*'")
+				return nil
+			}
+			lex := parts[len(parts)-1]
+			parts := parts[:len(parts)-1]
+			return parseRuleBody(name, append(parts, StarClosure(lex)))
+		case itemOptional:
+			if len(parts) == 0 {
+				p.Errorf("expected lexeme definition before '?'")
+				return nil
+			}
+			lex := parts[len(parts)-1]
+			parts := parts[:len(parts)-1]
+			return parseRuleBody(name, append(parts, OptionClosure(lex)))
 		case itemNewline, itemEOF:
 			if len(parts) == 0 {
 				return nil
@@ -151,6 +175,9 @@ func parseRuleBody(name string, parts []*Lexeme) parseStateFn {
 				p.parts <- NewConcatLexer(name, parts)
 			}
 			return parseLexeme
+		default:
+			p.Errorf("unexpected token : %v", next)
+			return nil
 		}
 		return nil
 	}

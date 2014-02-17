@@ -26,14 +26,14 @@ var parseTestTable = []ParseTest{
 		&ParseTree{"prgm", []byte("74538"), nil},
 	},
 	ParseTest{
-		"prgm <- 'a' ' ' 'b'",
+		"prgm <- 'a'_'b' \n _ <- ~'\\s+'",
 		"a b",
 		&ParseTree{
 			"prgm",
 			nil,
 			[]*ParseTree{
 				&ParseTree{"prgm", []byte("a"), nil},
-				&ParseTree{"prgm", []byte(" "), nil},
+				&ParseTree{"_", []byte(" "), nil},
 				&ParseTree{"prgm", []byte("b"), nil},
 			},
 		},
@@ -48,6 +48,51 @@ var parseTestTable = []ParseTest{
 				&ParseTree{"name", []byte("variableName"), nil},
 				&ParseTree{"prgm", []byte("="), nil},
 				&ParseTree{"number", []byte("432"), nil},
+			},
+		},
+	},
+	ParseTest{
+		"prgm <- a+\na <- 'a'",
+		"aaa",
+		&ParseTree{
+			"a+",
+			nil,
+			[]*ParseTree{
+				&ParseTree{"a", []byte("a"), nil},
+				&ParseTree{"a", []byte("a"), nil},
+				&ParseTree{"a", []byte("a"), nil},
+			},
+		},
+	},
+	ParseTest{
+		"prgm <- a+\na <- 'a' _?\n_ <- ~'\\s'",
+		"aa a",
+		&ParseTree{
+			"a+",
+			nil,
+			[]*ParseTree{
+				&ParseTree{"a", []byte("a"), nil},
+				&ParseTree{"a", nil, []*ParseTree{
+					&ParseTree{"a", []byte("a"), nil},
+					&ParseTree{"_", []byte(" "), nil},
+				}},
+				&ParseTree{"a", []byte("a"), nil},
+			},
+		},
+	},
+	ParseTest{
+		"prgm <- a*\na <- 'a' _?\n_ <- ~'\\s+'",
+		"aa \ta",
+		&ParseTree{
+			"a*",
+			nil,
+			[]*ParseTree{
+				&ParseTree{"a", []byte("a"), nil},
+				&ParseTree{"a", nil, []*ParseTree{
+					&ParseTree{"a", []byte("a"), nil},
+					&ParseTree{"_", []byte(" \t"), nil},
+				}},
+				&ParseTree{"a", []byte("a"), nil},
 			},
 		},
 	},
@@ -87,6 +132,11 @@ func TestParseTable(t *testing.T) {
 }
 
 func treeCompare(a, b *ParseTree) error {
+	if a == b {
+		return nil
+	} else if a == nil || b == nil {
+		return errors.New(fmt.Sprintf("a or b is nil %v %v", a, b))
+	}
 	if a.Type != b.Type {
 		return errors.New(fmt.Sprintf("tree type mismatch: %q exp: %q", a.Type, b.Type))
 	}
@@ -108,9 +158,13 @@ func treeCompare(a, b *ParseTree) error {
 }
 
 func dumpTree(tree *ParseTree, indent string) {
-	fmt.Println(indent, tree.Type)
-	fmt.Printf("%s  %q\n", indent, string(tree.Data))
-	for _, child := range tree.Children {
-		dumpTree(child, indent+" ")
+	if tree == nil {
+		fmt.Println(indent, nil)
+	} else {
+		fmt.Println(indent, tree.Type)
+		fmt.Printf("%s  %q\n", indent, string(tree.Data))
+		for _, child := range tree.Children {
+			dumpTree(child, indent+" ")
+		}
 	}
 }

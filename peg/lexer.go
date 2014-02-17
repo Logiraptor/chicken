@@ -38,6 +38,10 @@ const (
 	itemNewline
 	itemIdentifier
 	itemRegexp
+	itemClosure
+	itemPlus
+	itemAlternate
+	itemOptional
 	itemEOF
 )
 
@@ -61,6 +65,14 @@ func (i itemType) String() string {
 		return "itemRegexp"
 	case itemEOF:
 		return "itemEOF"
+	case itemClosure:
+		return "itemClosure"
+	case itemPlus:
+		return "itemPlus"
+	case itemAlternate:
+		return "itemAlternate"
+	case itemOptional:
+		return "itemOptional"
 	}
 	return "UNKNOWN"
 }
@@ -192,9 +204,13 @@ func (l *lexer) nextRuneCount(count int) {
 	}
 }
 
+func isIdentRune(r rune) bool {
+	return unicode.IsLetter(r) || r == '_'
+}
+
 func lexPeg(l *lexer) stateFn {
 	switch r := l.peek(); {
-	case unicode.IsLetter(r):
+	case isIdentRune(r):
 		return lexIdentifier
 	case unicode.IsSpace(r) && r != '\n':
 		return lexWhitespace
@@ -206,6 +222,14 @@ func lexPeg(l *lexer) stateFn {
 		return lexLiteral
 	case r == '~':
 		return lexRegex
+	case r == '*':
+		return lexClosure
+	case r == '+':
+		return lexPlus
+	case r == '/':
+		return lexAlternate
+	case r == '?':
+		return lexOption
 	case r == eof:
 		l.emit(itemEOF)
 		return nil
@@ -214,8 +238,32 @@ func lexPeg(l *lexer) stateFn {
 	return nil
 }
 
+func lexPlus(l *lexer) stateFn {
+	l.next()
+	l.emit(itemPlus)
+	return lexPeg
+}
+
+func lexAlternate(l *lexer) stateFn {
+	l.next()
+	l.emit(itemAlternate)
+	return lexPeg
+}
+
+func lexOption(l *lexer) stateFn {
+	l.next()
+	l.emit(itemOptional)
+	return lexPeg
+}
+
+func lexClosure(l *lexer) stateFn {
+	l.next()
+	l.emit(itemClosure)
+	return lexPeg
+}
+
 func lexIdentifier(l *lexer) stateFn {
-	for unicode.IsLetter(l.peek()) {
+	for isIdentRune(l.peek()) {
 		l.next()
 	}
 	l.emit(itemIdentifier)
