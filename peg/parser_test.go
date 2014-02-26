@@ -81,6 +81,41 @@ var parseTestTable = []ParseTest{
 		},
 	},
 	ParseTest{
+		"prgm <- a*\na <- 'a' _?^\n_ <- ~'\\s+'",
+		"aa \ta",
+		&ParseTree{
+			"a*",
+			nil,
+			[]*ParseTree{
+				&ParseTree{"a", []byte("a"), nil},
+				&ParseTree{"a", []byte("a"), nil},
+				&ParseTree{"a", []byte("a"), nil},
+			},
+		},
+	},
+	ParseTest{
+		"prgm <- a*\na <- 'a' _?^ '\\''\n_ <- ~'\\s+'",
+		"a'a \t'a'",
+		&ParseTree{
+			"a*",
+			nil,
+			[]*ParseTree{
+				&ParseTree{"a", nil, []*ParseTree{
+					&ParseTree{"a", []byte("a"), nil},
+					&ParseTree{"a", []byte("'"), nil},
+				}},
+				&ParseTree{"a", nil, []*ParseTree{
+					&ParseTree{"a", []byte("a"), nil},
+					&ParseTree{"a", []byte("'"), nil},
+				}},
+				&ParseTree{"a", nil, []*ParseTree{
+					&ParseTree{"a", []byte("a"), nil},
+					&ParseTree{"a", []byte("'"), nil},
+				}},
+			},
+		},
+	},
+	ParseTest{
 		"prgm <- a*\na <- 'a' _?\n_ <- ~'\\s+'",
 		"aa \ta",
 		&ParseTree{
@@ -93,6 +128,38 @@ var parseTestTable = []ParseTest{
 					&ParseTree{"_", []byte(" \t"), nil},
 				}},
 				&ParseTree{"a", []byte("a"), nil},
+			},
+		},
+	},
+	ParseTest{
+		"prgm <- a* b\na <- 'a'\nb <- 'b'",
+		"aaab",
+		&ParseTree{
+			"prgm",
+			nil,
+			[]*ParseTree{
+				&ParseTree{"a*", nil, []*ParseTree{
+					&ParseTree{"a", []byte("a"), nil},
+					&ParseTree{"a", []byte("a"), nil},
+					&ParseTree{"a", []byte("a"), nil},
+				}},
+				&ParseTree{"b", []byte("b"), nil},
+			},
+		},
+	},
+	ParseTest{
+		"prgm <- a+ b\na <- 'a'\nb <- 'b'",
+		"aaab",
+		&ParseTree{
+			"prgm",
+			nil,
+			[]*ParseTree{
+				&ParseTree{"a+", nil, []*ParseTree{
+					&ParseTree{"a", []byte("a"), nil},
+					&ParseTree{"a", []byte("a"), nil},
+					&ParseTree{"a", []byte("a"), nil},
+				}},
+				&ParseTree{"b", []byte("b"), nil},
 			},
 		},
 	},
@@ -113,23 +180,60 @@ var parseTestTable = []ParseTest{
 			},
 		},
 	},
+	ParseTest{
+		"prgm <- list+\nlist <- 'c' a+ 'd'\na <- 'a' / list",
+		"cacaaacaaddd",
+		&ParseTree{
+			"list+",
+			nil,
+			[]*ParseTree{
+				&ParseTree{"list", nil, []*ParseTree{
+					&ParseTree{"list", []byte("c"), nil},
+					&ParseTree{"a+", nil, []*ParseTree{
+						&ParseTree{"a", []byte("a"), nil},
+						&ParseTree{"list", nil, []*ParseTree{
+							&ParseTree{"list", []byte("c"), nil},
+							&ParseTree{"a+", nil, []*ParseTree{
+								&ParseTree{"a", []byte("a"), nil},
+								&ParseTree{"a", []byte("a"), nil},
+								&ParseTree{"a", []byte("a"), nil},
+								&ParseTree{"list", nil, []*ParseTree{
+									&ParseTree{"list", []byte("c"), nil},
+									&ParseTree{"a+", nil, []*ParseTree{
+										&ParseTree{"a", []byte("a"), nil},
+										&ParseTree{"a", []byte("a"), nil},
+									}},
+									&ParseTree{"list", []byte("d"), nil},
+								}},
+							}},
+							&ParseTree{"list", []byte("d"), nil},
+						}},
+					}},
+					&ParseTree{"list", []byte("d"), nil},
+				}},
+			},
+		},
+	},
 }
 
 func TestParseTable(t *testing.T) {
 	for _, tc := range parseTestTable {
 		parser, err := NewParser(strings.NewReader(tc.language))
 		if err != nil {
+			t.Error(tc.input)
 			t.Error(err)
 			return
 		}
 
 		tree, err := parser.Parse(strings.NewReader(tc.input))
 		if err != nil {
+			t.Error(tc.input)
 			t.Error(err)
 			return
 		}
 
 		if err := treeCompare(tree, tc.exp); err != nil {
+			t.Error(tc.input)
 			fmt.Println("Got:")
 			dumpTree(tree, "")
 			fmt.Println("Expected:")
@@ -173,7 +277,7 @@ func dumpTree(tree *ParseTree, indent string) {
 		fmt.Println(indent, tree.Type)
 		fmt.Printf("%s  %q\n", indent, string(tree.Data))
 		for _, child := range tree.Children {
-			dumpTree(child, indent+" ")
+			dumpTree(child, indent+" |")
 		}
 	}
 }

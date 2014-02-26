@@ -40,8 +40,10 @@ func (s *Source) Consume(regex *regexp.Regexp, pos int) []byte {
 // Consume literal attempts to consume a literal string.
 // Returns the consumed text, or nil if there was no match.
 func (s *Source) ConsumeLiteral(valid []byte, pos int) []byte {
+	if pos == len(s.buf) {
+		return nil
+	}
 	if bytes.HasPrefix(s.buf[pos:], valid) {
-		pos += len(valid)
 		return valid
 	}
 	return nil

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"regexp"
+	"strings"
 )
 
 type parseStateFn func(*parser) parseStateFn
@@ -76,9 +77,19 @@ func constructLanguage(parts chan *Lexeme, success chan *Language, failure chan 
 }
 
 func resolveDependencies(lex *Lexeme, env map[string]*Lexeme) (*Lexeme, error) {
-	if lex.Lexer == nil {
-		(*lex) = *env[lex.Name[1:]]
+	if lex.isResolved {
+		return lex, nil
 	}
+	old := lex
+	if lex.Lexer == nil {
+		p, ok := env[lex.Name[1:]]
+		if !ok {
+			return nil, errors.New(fmt.Sprintf("Cannot resolve dependency %s\n Available are: %v", lex.Name[1:], env))
+		} else {
+			lex = p
+		}
+	}
+	lex.isResolved = true
 
 	for i, dep := range lex.Dependencies {
 		var err error
@@ -87,6 +98,8 @@ func resolveDependencies(lex *Lexeme, env map[string]*Lexeme) (*Lexeme, error) {
 			return nil, err
 		}
 	}
+
+	(*old) = (*lex)
 
 	return lex, nil
 }
@@ -127,6 +140,7 @@ func parseRule(name string) parseStateFn {
 }
 
 func parseRuleBody(name string, parts []*Lexeme) parseStateFn {
+	quoteResolver := strings.NewReplacer("\\'", "'")
 	return func(p *parser) parseStateFn {
 		next, ok := <-p.lex.items
 		if !ok {
@@ -137,6 +151,7 @@ func parseRuleBody(name string, parts []*Lexeme) parseStateFn {
 		case itemWhitespace:
 			return parseRuleBody(name, parts)
 		case itemLiteral:
+			next.val = quoteResolver.Replace(next.val)
 			return parseRuleBody(name, append(parts, NewLiteralLexer(name, next.val)))
 		case itemRegexp:
 			return parseRuleBody(name, append(parts, NewRegexpLexer(name, regexp.MustCompile(next.val))))
@@ -166,8 +181,17 @@ func parseRuleBody(name string, parts []*Lexeme) parseStateFn {
 			lex := parts[len(parts)-1]
 			parts := parts[:len(parts)-1]
 			return parseRuleBody(name, append(parts, NewOptionClosure(lex)))
+		case itemDiscard:
+			if len(parts) == 0 {
+				p.Errorf("expected lexeme definition before '^'")
+				return nil
+			}
+			lex := parts[len(parts)-1]
+			parts := parts[:len(parts)-1]
+			return parseRuleBody(name, append(parts, NewDiscardLexer(lex)))
 		case itemAlternate:
 			return parseAlternateRHS(name, parts)
+
 		case itemNewline, itemEOF:
 			if len(parts) == 0 {
 				return nil

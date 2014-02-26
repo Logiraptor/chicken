@@ -42,6 +42,7 @@ const (
 	itemPlus
 	itemAlternate
 	itemOptional
+	itemDiscard
 	itemEOF
 )
 
@@ -73,6 +74,8 @@ func (i itemType) String() string {
 		return "itemAlternate"
 	case itemOptional:
 		return "itemOptional"
+	case itemDiscard:
+		return "itemDiscard"
 	}
 	return "UNKNOWN"
 }
@@ -230,6 +233,8 @@ func lexPeg(l *lexer) stateFn {
 		return lexAlternate
 	case r == '?':
 		return lexOption
+	case r == '^':
+		return lexDiscard
 	case r == eof:
 		l.emit(itemEOF)
 		return nil
@@ -253,6 +258,12 @@ func lexAlternate(l *lexer) stateFn {
 func lexOption(l *lexer) stateFn {
 	l.next()
 	l.emit(itemOptional)
+	return lexPeg
+}
+
+func lexDiscard(l *lexer) stateFn {
+	l.next()
+	l.emit(itemDiscard)
 	return lexPeg
 }
 

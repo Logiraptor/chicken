@@ -11,12 +11,13 @@ import (
 type Lexeme struct {
 	Name         string
 	Dependencies []*Lexeme
+	isResolved   bool // whether the deps are resolved.
 	// Lexer returns the parse tree, an error and the number of input bytes consumed.
 	Lexer func(*Source, int) (*ParseTree, error, int)
 }
 
 func (l *Lexeme) dumpTree(indent string) string {
-	s := fmt.Sprintln(indent, l.Name, l.Lexer != nil)
+	s := fmt.Sprintln(indent, l.Name, l.isResolved)
 	for _, child := range l.Dependencies {
 		s += child.dumpTree(indent + " ")
 	}
@@ -50,7 +51,7 @@ func (l *Language) Parse(source io.Reader) (*ParseTree, error) {
 func NewLiteralLexer(typ, valid string) *Lexeme {
 	vbytes := []byte(valid)
 	return &Lexeme{
-		Name: valid,
+		Name: typ,
 		Lexer: func(s *Source, pos int) (*ParseTree, error, int) {
 			match := s.ConsumeLiteral(vbytes, pos)
 			if match == nil {
@@ -150,7 +151,7 @@ func NewPlusClosure(lex *Lexeme) *Lexeme {
 				}
 			}
 
-			return resp, nil, start - pos
+			return resp, nil, pos - start
 		},
 	}
 }
@@ -165,20 +166,15 @@ func NewStarClosure(lex *Lexeme) *Lexeme {
 			var next *ParseTree
 			var err error
 			var off int
-			if err != nil {
-				return nil, err, 0
-			} else {
-				for {
-					next, err, off = lex.Lexer(s, pos)
-					if err != nil {
-						break
-					}
-					resp.Children = append(resp.Children, next)
-					pos += off
+			for {
+				next, err, off = lex.Lexer(s, pos)
+				if err != nil {
+					break
 				}
+				resp.Children = append(resp.Children, next)
+				pos += off
 			}
-
-			return resp, nil, start - pos
+			return resp, nil, pos - start
 		},
 	}
 }
@@ -209,6 +205,17 @@ func NewAlternateLexer(name string, lhs, rhs *Lexeme) *Lexeme {
 				}
 				return tree, nil, off
 			}
+		},
+	}
+}
+
+func NewDiscardLexer(lex *Lexeme) *Lexeme {
+	return &Lexeme{
+		Name:         lex.Name + "^",
+		Dependencies: []*Lexeme{lex},
+		Lexer: func(s *Source, pos int) (*ParseTree, error, int) {
+			_, _, offset := lex.Lexer(s, pos)
+			return nil, nil, offset
 		},
 	}
 }
