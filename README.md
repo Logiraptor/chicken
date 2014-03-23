@@ -9,7 +9,7 @@ The PEG Parser:
 NOTE: The current implementation is missing several necessary features to be able to support actual languages.
 
 ### Install:
-    go get github.com/Logiraptor/chicken
+    go get github.com/Logiraptor/chicken/peg
 
 
 ### Defining your language:
